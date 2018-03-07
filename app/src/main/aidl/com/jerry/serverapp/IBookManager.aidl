@@ -3,6 +3,7 @@ package com.jerry.serverapp;
 
 // Declare any non-default types here with import statements
 import com.jerry.serverapp.Book;
+import com.jerry.clientapp.IOnBookAddedListener;
 
 interface IBookManager {
     /**
@@ -11,4 +12,7 @@ interface IBookManager {
      */
     List<Book> getBookList();
     void addBook(in Book book);
+
+    void registerListener(IOnBookAddedListener listener);
+    void unregisterListener(IOnBookAddedListener listener);
 }

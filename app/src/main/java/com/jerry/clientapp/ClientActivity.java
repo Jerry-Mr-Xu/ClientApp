@@ -3,13 +3,17 @@ package com.jerry.clientapp;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.RemoteException;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.jerry.serverapp.Book;
 import com.jerry.serverapp.IBookManager;
@@ -70,12 +74,55 @@ public class ClientActivity extends AppCompatActivity {
                 }
             }
         });
+
+        Button btnAddListener = (Button) findViewById(R.id.btn_add_listener);
+        btnAddListener.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (bookManager == null) {
+                    return;
+                }
+
+                try {
+                    bookManager.registerListener(listener);
+                    Log.e(TAG, "AddListener: ");
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
+
+    private IOnBookAddedListener listener = new IOnBookAddedListener.Stub() {
+
+        @Override
+        public void onBookAdded(Book newBook) throws RemoteException {
+            Log.e(TAG, "onBookAdded: currentThread = " + (Thread.currentThread() == Looper.getMainLooper().getThread()));
+            handler.obtainMessage(100, newBook).sendToTarget();
+        }
+    };
+
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case 100:
+                    Toast.makeText(ClientActivity.this, msg.obj.toString(), Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
+    };
 
     private ServiceConnection conn = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.e(TAG, "onServiceConnected: ");
             bookManager = IBookManager.Stub.asInterface(service);
+            try {
+                service.linkToDeath(deathRecipient, 0);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
@@ -89,6 +136,21 @@ public class ClientActivity extends AppCompatActivity {
         intent.setPackage("com.jerry.serverapp");
         bindService(intent, conn, BIND_AUTO_CREATE);
     }
+
+    private IBinder.DeathRecipient deathRecipient = new IBinder.DeathRecipient() {
+        @Override
+        public void binderDied() {
+            if (bookManager == null) {
+                return;
+            }
+
+            Log.e(TAG, "binderDied: ");
+            bookManager.asBinder().unlinkToDeath(deathRecipient, 0);
+            bookManager = null;
+
+            bindService();
+        }
+    };
 
     @Override
     protected void onDestroy() {

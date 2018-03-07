@@ -17,4 +17,10 @@
         android:layout_height="wrap_content"
         android:text="新添加一本书" />
 
+    <Button
+        android:id="@+id/btn_add_listener"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="添加监听器" />
+
 </LinearLayout>
